@@ -60,10 +60,18 @@ const DEFAULT_CODE = `
 #     c = Context({"todos": todos})
 #     return HttpResponse(t.render(c))
 
+# def clear(request):
+#     _create_db()
+
+#     Todo.objects.all().delete()
+
+#     return HttpResponse("Cleared all todos")
+
 
 # urlpatterns = [
 #     path("", index),
 #     path("todos", todos),
+#     path("clear", clear),
 # ]
 
 
