@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@builder.io/partytown": "^0.6.2",
+    "@codemirror/autocomplete": "^6.3.0",
     "@codemirror/lang-python": "^6.0.0",
     "@hpcc-js/wasm": "^1.14.1",
     "@jlongster/sql.js": "^1.6.7",
