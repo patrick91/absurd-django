@@ -4,7 +4,10 @@ module.exports = {
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'django-green': '#0C4B33',
+    },
   },
   plugins: [],
 };
