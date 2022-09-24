@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#chart {
+  height: calc(100vh - 58px);
+}
+
+#chart svg {
+  height: calc(100vh - 58px);
+  width: 100%;
+}
