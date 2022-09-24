@@ -38,7 +38,17 @@ settings.configure(
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': '/data/data.sqlite3',
     }
-}
+  },
+  TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            # ... some options here ...
+        },
+    },
+  ]
 )
 
 browser_url = None
