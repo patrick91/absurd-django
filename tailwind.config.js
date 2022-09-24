@@ -7,6 +7,7 @@ module.exports = {
     extend: {
       colors: {
         'django-green': '#0C4B33',
+      },
     },
   },
   plugins: [],
