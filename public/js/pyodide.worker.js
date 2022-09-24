@@ -3,6 +3,22 @@ importScripts("https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js");
 async function loadPyodideAndPackages() {
   self.pyodide = await loadPyodide();
 
+  let mountDir = "/data";
+  pyodide.FS.mkdir(mountDir);
+  pyodide.FS.mount(pyodide.FS.filesystems.IDBFS, { root: "." }, mountDir);
+
+  await new Promise((resolve, reject) => {
+    console.log("syncing fs");
+    pyodide.FS.syncfs(true, (err) => {
+      console.log("done sync", err);
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+
   await self.pyodide.loadPackage(["micropip"]);
 
   await self.pyodide.runPythonAsync(`
@@ -12,6 +28,7 @@ async function loadPyodideAndPackages() {
     await micropip.install('django')
   `);
 }
+
 let pyodideReadyPromise = loadPyodideAndPackages().then(() => {
   self.postMessage({ ready: true });
 });
@@ -27,11 +44,7 @@ self.onmessage = async (event) => {
 `);
 
   function myRunPython(code) {
-    // const namespace = pyodide.globals.get("dict")();
-
     const result = pyodide.runPython(code);
-
-    // namespace.destroy();
 
     return result;
   }
@@ -49,14 +62,10 @@ self.onmessage = async (event) => {
     await self.pyodide.loadPackagesFromImports(python);
     const results = myRunPython(python);
 
-    // let results = await self.pyodide.runPythonAsync(
-    //   python,
-    //   dict()
-    //   // { globals: pyodide.toPy({}) }
-    //   // pyodide.toPy({ globals: {}})
-    //   // JsProxy({ globals: {} })
-    // );
-    self.postMessage({ results, id });
+    self.pyodide.FS.syncfs(false, (err) => {
+      console.log("done sync", err);
+      self.postMessage({ results, id });
+    });
   } catch (error) {
     self.postMessage({ error: error.message, id });
   }

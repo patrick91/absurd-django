@@ -9,7 +9,8 @@ let renderDiagram = async (code: string) => "";
 const PRE_CODE = `
 import os
 import sys
-from dataclasses import dataclass
+
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 from django.conf import settings
 from django.core.wsgi import get_wsgi_application
@@ -31,6 +32,13 @@ settings.configure(
     ),  # We aren't using any security features but Django requires this setting
     MIDDLEWARE=["django.middleware.common.CommonMiddleware"],
   EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend',
+  INSTALLED_APPS=["abc"],
+  DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': '/data/data.sqlite3',
+    }
+}
 )
 
 browser_url = None
@@ -107,6 +115,7 @@ export const useRender = ({
 
     const pyodideWorker = new Worker("/js/pyodide.worker.js");
 
+
     const callbacks: any = {};
 
     pyodideWorker.onmessage = (event) => {
@@ -143,8 +152,6 @@ export const useRender = ({
         const { results, error } = await asyncRun(code);
 
         if (results) {
-          console.log('we got results', results);
-
           return results;
         } else if (error) {
           console.error("pyodideWorker error: ", error);

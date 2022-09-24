@@ -55,8 +55,6 @@ export const EditorWithPreview = ({}) => {
     }, 100);
   }, [renderDiagram]);
 
-  console.log(data);
-
   return (
     <div className="grid grid-cols-2">
       <div className="overflow-y-scroll border-r">
