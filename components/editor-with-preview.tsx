@@ -4,7 +4,7 @@ import { useRender } from "../components/pyodide-viz";
 
 // @ts-ignore
 import debounce from "lodash.debounce";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 const DEFAULT_CODE = `
 # from django.db import models
@@ -65,16 +65,17 @@ const DEFAULT_CODE = `
 #     path("", index),
 #     path("todos", todos),
 # ]
-
-
-# browser_url = "/todos"
 `.trim();
 
 export const EditorWithPreview = ({}) => {
   const [rendering, setRendering] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [code, setCode] = useState(DEFAULT_CODE);
+
   const [data, setData] = useState("");
+
+  const [currentUrl, setCurrentUrl] = useState("http://localhost:3000/todos");
 
   const { renderDiagram } = useRender({
     onLoadStart: () => {
@@ -84,22 +85,48 @@ export const EditorWithPreview = ({}) => {
       console.log("end");
       setLoading(false);
 
-      const data = await renderDiagram(DEFAULT_CODE);
+      const data = await renderDiagram(DEFAULT_CODE, currentUrl);
       setData(data);
     },
   });
 
   const onChange = useMemo(() => {
     return debounce(async (code: string) => {
-      console.log("doing");
+      setCode(code);
       setRendering(true);
 
-      const data = await renderDiagram(code);
+      const data = await renderDiagram(code, currentUrl);
 
       setData(data);
       setRendering(false);
     }, 100);
-  }, [renderDiagram]);
+  }, [renderDiagram, currentUrl]);
+
+  const onClick = async () => {
+    setRendering(true);
+
+    const data = await renderDiagram(code, currentUrl);
+
+    setData(data);
+    setRendering(false);
+  };
+
+  useEffect(() => {
+    if (rendering) {
+      return;
+    }
+    setRendering(true);
+
+    const data = renderDiagram(code, currentUrl).then(
+      (data) => {
+        setData(data);
+        setRendering(false);
+      },
+      (error) => {
+        console.error(error);
+      }
+    );
+  }, [currentUrl]);
 
   return (
     <div className="grid grid-cols-2">
@@ -107,8 +134,20 @@ export const EditorWithPreview = ({}) => {
         <Editor defaultCode={DEFAULT_CODE} onChange={onChange} />
       </div>
 
-      <div className="relative">
+      <div className="relative flex flex-col">
         {(loading || rendering) && <Loading />}
+
+        <div className="flex p-4 border-b bg-green-200">
+          <input
+            className="w-full p-2 bg-transparent outline-none"
+            value={currentUrl}
+            onChange={(e) => setCurrentUrl(e.target.value)}
+          />
+
+          <button className="text-3xl" onClick={onClick}>
+            🔃
+          </button>
+        </div>
 
         <iframe srcDoc={data} className="w-full h-full" />
       </div>

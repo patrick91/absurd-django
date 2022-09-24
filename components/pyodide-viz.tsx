@@ -1,10 +1,4 @@
-import Script from "next/script";
-import { useEffect, useRef, useState } from "react";
-
-// import { renderDiagram } from "../lib/render";
-import { resources } from "../lib/resources";
-
-let renderDiagram = async (code: string) => "";
+let renderDiagram = async (code: string, url: string) => "";
 
 const PRE_CODE = `
 import os
@@ -125,7 +119,6 @@ export const useRender = ({
 
     const pyodideWorker = new Worker("/js/pyodide.worker.js");
 
-
     const callbacks: any = {};
 
     pyodideWorker.onmessage = (event) => {
@@ -156,7 +149,9 @@ export const useRender = ({
       };
     })();
 
-    renderDiagram = async (code: string) => {
+    renderDiagram = async (code: string, url: string) => {
+      code += "\n" + `browser_url = "${url}".replace("http://localhost:3000", "")`;
+
       try {
         // @ts-ignore
         const { results, error } = await asyncRun(code);
