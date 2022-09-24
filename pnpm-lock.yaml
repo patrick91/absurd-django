@@ -4,7 +4,9 @@ specifiers:
   '@builder.io/partytown': ^0.6.2
   '@codemirror/autocomplete': ^6.3.0
   '@codemirror/lang-python': ^6.0.0
+  '@codemirror/lint': ^6.0.0
   '@codemirror/search': ^6.2.0
+  '@codemirror/theme-one-dark': ^6.1.0
   '@hpcc-js/wasm': ^1.14.1
   '@types/node': 18.0.0
   '@types/react': 18.0.14
@@ -26,7 +28,9 @@ dependencies:
   '@builder.io/partytown': 0.6.4
   '@codemirror/autocomplete': 6.3.0_6c5de7gaes3lxvqlrqug4ubcum
   '@codemirror/lang-python': 6.0.2
+  '@codemirror/lint': 6.0.0
   '@codemirror/search': 6.2.0
+  '@codemirror/theme-one-dark': 6.1.0
   '@hpcc-js/wasm': 1.16.5
   '@uiw/react-codemirror': 4.12.3_34tlsusrefcg2fjghr45brdbia
   lodash.debounce: 4.0.8
