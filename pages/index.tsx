@@ -25,7 +25,7 @@ const Home: NextPage = () => {
       ></Script>
 
       <Head>
-        <title>Diagrams</title>
+        <title>Absurd django 🦄</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
