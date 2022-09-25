@@ -90,7 +90,6 @@ export const EditorWithPreview = ({}) => {
       setLoading(true);
     },
     onLoad: async () => {
-      console.log("end");
       setLoading(false);
 
       const data = await renderDiagram(DEFAULT_CODE, currentUrl);
