@@ -1,21 +1,15 @@
-let renderDiagram = async (code: string, url: string) => "";
-
-const PRE_CODE = `
+export const PRE_CODE = `
 import os
 import sys
-
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-
 from django.conf import settings
 from django.core.wsgi import get_wsgi_application
 from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import path
 from django.utils.crypto import get_random_string
 from django.utils.functional import empty
-
 from django.urls.resolvers import _get_cached_resolver
 _get_cached_resolver.cache_clear()
-
 settings._wrapped = empty
 settings.configure(
     DEBUG=True,
@@ -44,11 +38,10 @@ settings.configure(
     },
   ]
 )
-
 browser_url = None
 `;
 
-const POST_CODE = `
+export const POST_CODE = `
 env = {
   'SERVER_NAME': '1.0.0.127.in-addr.arpa',
   'GATEWAY_INTERFACE': 'CGI/1.1',
@@ -88,89 +81,10 @@ env = {
   'wsgi.multiprocess': False,
   # 'wsgi.file_wrapper': <class 'wsgiref.util.FileWrapper'>
 }
-
 env["wsgi.input"] = ""
-
 def start_response(status, headers):
   print(status, headers)
-
-
 app = get_wsgi_application()
-
 response = app(env, start_response=start_response)
-
 response.content.decode(response.charset)
 `;
-
-export const useRender = ({
-  onLoad,
-  onLoadStart,
-}: {
-  onLoadStart: () => void;
-  onLoad: () => Promise<void>;
-}) => {
-  // there's probably a better way for doing this, but I'll investigate later
-  // @ts-ignore
-  if (typeof window !== "undefined" && !window.pyodide) {
-    onLoadStart();
-
-    // @ts-ignore
-    window.pyodide = true;
-
-    const pyodideWorker = new Worker("/js/pyodide.worker.js");
-
-    const callbacks: any = {};
-
-    pyodideWorker.onmessage = (event) => {
-      if (event.data.ready) {
-        onLoad();
-
-        return;
-      }
-
-      const { id, ...data } = event.data;
-      const onSuccess = callbacks[id];
-      delete callbacks[id];
-      onSuccess(data);
-    };
-
-    const asyncRun = (() => {
-      let id = 0; // identify a Promise
-      return (pythonCode: string) => {
-        // the id could be generated more carefully
-        id = (id + 1) % Number.MAX_SAFE_INTEGER;
-        return new Promise((onSuccess) => {
-          callbacks[id] = onSuccess;
-          pyodideWorker.postMessage({
-            python: PRE_CODE + pythonCode + "\n" + POST_CODE,
-            id,
-          });
-        });
-      };
-    })();
-
-    renderDiagram = async (code: string, url: string) => {
-      code += "\n" + `browser_url = "${url}".replace("http://localhost:3000", "")`;
-
-      try {
-        // @ts-ignore
-        const { results, error } = await asyncRun(code);
-
-        if (results) {
-          return results;
-        } else if (error) {
-          console.error("pyodideWorker error: ", error);
-        }
-      } catch (e) {
-        console.log(
-          // @ts-ignore
-          `Error in pyodideWorker at ${e.filename}, Line: ${e.lineno}, ${e.message}`
-        );
-      }
-    };
-  }
-
-  return {
-    renderDiagram,
-  };
-};
