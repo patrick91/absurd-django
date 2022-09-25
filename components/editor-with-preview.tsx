@@ -130,6 +130,36 @@ const Preview = ({
 }) => {
   const { loading } = usePyodide();
 
+  useEffect(() => {
+    const listener = (event: MessageEvent) => {
+      console.log(event.data);
+    };
+
+    window.addEventListener("message", listener, false);
+
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, []);
+
+  const html =
+    data +
+    `
+      <script>
+      document.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+        window.parent.postMessage({
+          type: "submit",
+          method: e.target.method,
+          data: Object.fromEntries(formData.entries())
+        }, "*");
+      })
+      </script>
+    `;
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex p-4 border-b bg-green-200">
@@ -148,7 +178,7 @@ const Preview = ({
             <Loading />
           </div>
         )}
-        <iframe srcDoc={data} className="w-full h-full" />
+        <iframe srcDoc={html} className="w-full h-full" />
       </div>
     </div>
   );
