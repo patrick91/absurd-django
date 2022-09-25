@@ -1,5 +1,5 @@
-# Diagrams web
+# Absurd django
 
-A pyodide web app for https://diagrams.mingrammer.com/
+An experiment of running django in the browser using Pyodide.
 
-Try it here: https://diagrams-web.vercel.app/
+Try it here: https://absurd-django.vercel.app/
