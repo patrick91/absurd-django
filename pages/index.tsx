@@ -19,7 +19,7 @@ const Home: NextPage = () => {
     <div className="h-full flex flex-col">
       <Script
         defer
-        data-domain="diagrams-web.vercel.app"
+        data-domain="absurd-django.vercel.app"
         src="https://plausible.io/js/plausible.js"
       ></Script>
 
