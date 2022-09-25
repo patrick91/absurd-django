@@ -1,4 +1,4 @@
-export const PRE_CODE = `
+export const SETUP_CODE = `
 import os
 import sys
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
