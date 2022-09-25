@@ -1,7 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
 import Script from "next/script";
-import React from "react";
 import dynamic from "next/dynamic";
 
 import { Header } from "../components/header";
@@ -17,7 +16,7 @@ const EditorWithPreview = dynamic(
 
 const Home: NextPage = () => {
   return (
-    <div>
+    <div className="h-full flex flex-col">
       <Script
         defer
         data-domain="diagrams-web.vercel.app"

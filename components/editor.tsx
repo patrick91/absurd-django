@@ -1,5 +1,5 @@
-import CodeMirror from "@uiw/react-codemirror";
-import { python } from "@codemirror/lang-python";
+import MonacoEditor, { useMonaco } from "@monaco-editor/react";
+import { useEffect } from "react";
 
 export const Editor = ({
   onChange,
@@ -8,12 +8,21 @@ export const Editor = ({
   defaultCode: string;
   onChange?: (code: string) => void;
 }) => {
+  const monaco = useMonaco();
+
+  useEffect(() => {
+    if (monaco) {
+      console.log("here is the monaco instance:", monaco);
+    }
+  }, [monaco]);
+
   return (
-    <CodeMirror
-      value={defaultCode}
-      height="calc(100vh - 58px)"
-      extensions={[python()]}
-      onChange={onChange}
+    <MonacoEditor
+      onChange={(value) => {
+        onChange?.(value || "");
+      }}
+      defaultValue={defaultCode}
+      defaultLanguage="python"
     />
   );
 };
