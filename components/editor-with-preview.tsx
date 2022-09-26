@@ -3,7 +3,7 @@ import { Loading } from "../components/loading";
 
 // @ts-ignore
 import debounce from "lodash.debounce";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
 import { POST_CODE, SETUP_CODE } from "../lib/django";
 
@@ -14,6 +14,13 @@ from django.template import Template, Context
 from django.http import HttpResponse
 
 TEMPLATE = """
+<h1>Add new todo</h1>
+
+<form action="/add-todo" method="post">
+    <input type="text" />
+    <button>Add</button>
+</form>
+
 <h1>My Todos</h1>
 
 <ul>
@@ -41,8 +48,12 @@ class Todo(models.Model):
     class Meta:
         app_label = "abc"
 
-def index(request):
+def add_todo(request):
     _create_db()
+
+    print(request.POST)
+    # print method
+    print(request.method)
 
     todo = Todo.objects.create(text=f"text {random.randint(0, 100)}")
 
@@ -70,8 +81,8 @@ def clear(request):
 
 
 urlpatterns = [
-    path("", index),
-    path("todos", todos),
+    path("", todos),
+    path("add-todo", add_todo),
     path("clear", clear),
 ]
 `.trim();
@@ -95,14 +106,22 @@ const CodeEditor = ({
   const run = useMemo(
     () =>
       debounce(async (code: string) => {
+        console.log("called");
+
         await runPython(getCode("", url));
-        const data = await runPython(getCode(code, url));
+
+        // TODO: check errors
+        await runPython(getCode(code, url));
+
+        const data = await runPython(
+          `request("${url}".replace("http://localhost:3000", ""), "GET")`
+        );
 
         if (data.result) {
           onResult(data.result);
         }
       }, 100),
-    [runPython, url]
+    [runPython, url, onResult]
   );
 
   const onChange = (code: string) => {
@@ -114,7 +133,7 @@ const CodeEditor = ({
     runPython(SETUP_CODE).then(() => {
       run(code);
     });
-  }, [code, url]);
+  }, [code, url, runPython, run]);
 
   return <Editor defaultCode={code} onChange={onChange} />;
 };
@@ -129,9 +148,28 @@ const Preview = ({
   onUrlChange: (url: string) => void;
 }) => {
   const { loading } = usePyodide();
+  const { runPython } = usePyodide();
 
   useEffect(() => {
-    const listener = (event: MessageEvent) => {
+    const listener = async (event: MessageEvent) => {
+      if (event.data.source !== "django-iframe") {
+        return;
+      }
+
+      if (event.data.type === "submit") {
+        const method = event.data.method;
+        const eventData = event.data.data;
+        const url = event.data.url;
+
+        const data = await runPython(
+          `request("${url}".replace("http://localhost:3000", ""), "${method}", ${JSON.stringify(
+            eventData
+          )})`
+        );
+
+        console.log(data);
+      }
+
       console.log(event.data);
     };
 
@@ -152,9 +190,11 @@ const Preview = ({
         const formData = new FormData(e.target);
 
         window.parent.postMessage({
+          source: "django-iframe",
           type: "submit",
           method: e.target.method,
-          data: Object.fromEntries(formData.entries())
+          data: Object.fromEntries(formData.entries()),
+          url: e.target.action,
         }, "*");
       })
       </script>
@@ -185,14 +225,18 @@ const Preview = ({
 };
 
 export const EditorWithPreview = ({}) => {
-  const [url, setUrl] = useState("http://localhost:3000/todos");
+  const [url, setUrl] = useState("http://localhost:3000/");
   const [data, setData] = useState("");
+
+  const handleResult = useCallback((result: string) => {
+    setData(result);
+  }, []);
 
   return (
     <PyodideProvider>
       <div className="grid grid-cols-2 flex-1">
         <div className="overflow-y-scroll border-r">
-          <CodeEditor url={url} onResult={(data) => setData(data)} />
+          <CodeEditor url={url} onResult={handleResult} />
         </div>
 
         <div className="relative flex flex-col">
