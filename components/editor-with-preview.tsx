@@ -85,12 +85,15 @@ const getCode = (code: string, url: string) => {
 const CodeEditor = ({
   url,
   onResult,
+  code,
+  setCode,
 }: {
   url: string;
   onResult: (result: string) => void;
+  code: string;
+  setCode: (code: string) => void;
 }) => {
   const { runPython } = usePyodide();
-  const [code, setCode] = useState(DEFAULT_CODE);
 
   const run = useMemo(
     () =>
@@ -105,6 +108,10 @@ const CodeEditor = ({
     [runPython, url]
   );
 
+  // TODO:
+  // have a separate thing here that saves the code and also 
+  // debounces that (possibly more rarely...)
+
   const onChange = (code: string) => {
     console.log("second");
     setCode(code);
@@ -117,6 +124,10 @@ const CodeEditor = ({
   }, [code, url]);
 
   return <Editor defaultCode={code} onChange={onChange} />;
+
+  // There are really two big pieces here:
+  // - Load the saved code at the very very beginning when the page loads
+  // - Save the code occasionally so that when the whole page reloads it's there..
 };
 
 const Preview = ({
@@ -188,11 +199,13 @@ export const EditorWithPreview = ({}) => {
   const [url, setUrl] = useState("http://localhost:3000/todos");
   const [data, setData] = useState("");
 
+  const [code, setCode] = useState(DEFAULT_CODE);
+
   return (
-    <PyodideProvider>
+    <PyodideProvider setCode={setCode}>
       <div className="grid grid-cols-2 flex-1">
         <div className="overflow-y-scroll border-r">
-          <CodeEditor url={url} onResult={(data) => setData(data)} />
+          <CodeEditor url={url} onResult={(data) => setData(data)} code={code} setCode={setCode} />
         </div>
 
         <div className="relative flex flex-col">

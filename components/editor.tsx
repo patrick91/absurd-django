@@ -1,5 +1,5 @@
 import MonacoEditor, { useMonaco } from "@monaco-editor/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export const Editor = ({
   onChange,
@@ -16,6 +16,18 @@ export const Editor = ({
     }
   }, [monaco]);
 
+  const editorRef = useRef(null);
+
+  function handleEditorDidMount(editor, monaco) {
+    editorRef.current = editor; 
+  }
+
+  // setInterval(() => {
+  // if (editorRef.current) {
+  //   console.log(editorRef.current.getValue());
+  // }
+  // }, 1000)
+
   return (
     <MonacoEditor
       onChange={(value) => {
@@ -23,6 +35,7 @@ export const Editor = ({
       }}
       defaultValue={defaultCode}
       defaultLanguage="python"
+      onMount={handleEditorDidMount}
     />
   );
 };
