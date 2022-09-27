@@ -28,7 +28,7 @@ async function loadPyodideAndPackages() {
 }
 
 let pyodideReadyPromise = loadPyodideAndPackages().then(() => {
-  self.postMessage({ ready: true });
+  self.postMessage({ ready: true, result: null });
 });
 
 self.onmessage = async (event) => {
@@ -49,6 +49,6 @@ self.onmessage = async (event) => {
       self.postMessage({ result, id });
     });
   } catch (error) {
-    self.postMessage({ error: error.message, id });
+    self.postMessage({ error: error.message, id, result: null });
   }
 };

@@ -11,13 +11,13 @@ const DEFAULT_CODE = `
 from django.db import models
 from django.db import connection
 from django.template import Template, Context
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 
 TEMPLATE = """
 <h1>Add new todo</h1>
 
 <form action="/add-todo" method="post">
-    <input type="text" />
+    <input type="text" name="text" />
     <button>Add</button>
 </form>
 
@@ -51,22 +51,18 @@ class Todo(models.Model):
 def add_todo(request):
     _create_db()
 
-    print(request.POST)
-    # print method
-    print(request.method)
+    # TODO: raise if it is not post
 
-    todo = Todo.objects.create(text=f"text {random.randint(0, 100)}")
+    text = request.POST["text"]
 
-    return JsonResponse(
-        {"id": todo.id, "text": todo.text}
-    )
+    todo = Todo.objects.create(text=text)
 
-    return JsonResponse({"id": todo.id, "text": todo.text})
+    return HttpResponseRedirect("/")
 
 def todos(request):
     _create_db()
 
-    todos = Todo.objects.all()
+    todos = Todo.objects.all().order_by("-id")
 
     t = Template(TEMPLATE)
     c = Context({"todos": todos})
@@ -87,65 +83,33 @@ urlpatterns = [
 ]
 `.trim();
 
-const getCode = (code: string, url: string) => {
-  const urlCode = `\nbrowser_url = "${url}".replace("http://localhost:3000", "")\n`;
-
-  return SETUP_CODE + code + urlCode + POST_CODE;
+const getCode = (code: string) => {
+  return [SETUP_CODE, code, POST_CODE].join("\n");
 };
 
-const CodeEditor = ({
-  url,
-  onResult,
-}: {
-  url: string;
-  onResult: (result: string) => void;
-}) => {
-  const { runPython } = usePyodide();
+const CodeEditor = ({ onChange }: { onChange: (code: string) => void }) => {
   const [code, setCode] = useState(DEFAULT_CODE);
 
-  const run = useMemo(
-    () =>
-      debounce(async (code: string) => {
-        console.log("called");
+  const run = useMemo(() => debounce(onChange, 100), [onChange]);
 
-        await runPython(getCode("", url));
-
-        // TODO: check errors
-        await runPython(getCode(code, url));
-
-        const data = await runPython(
-          `request("${url}".replace("http://localhost:3000", ""), "GET")`
-        );
-
-        if (data.result) {
-          onResult(data.result);
-        }
-      }, 100),
-    [runPython, url, onResult]
-  );
-
-  const onChange = (code: string) => {
-    console.log("second");
+  const handleOnChange = (code: string) => {
     setCode(code);
+    run(code);
   };
 
-  useEffect(() => {
-    runPython(SETUP_CODE).then(() => {
-      run(code);
-    });
-  }, [code, url, runPython, run]);
-
-  return <Editor defaultCode={code} onChange={onChange} />;
+  return <Editor defaultCode={code} onChange={handleOnChange} />;
 };
 
 const Preview = ({
   data,
   url,
   onUrlChange,
+  onResult,
 }: {
   data: string;
   url: string;
   onUrlChange: (url: string) => void;
+  onResult: (result: string) => void;
 }) => {
   const { loading } = usePyodide();
   const { runPython } = usePyodide();
@@ -162,15 +126,15 @@ const Preview = ({
         const url = event.data.url;
 
         const data = await runPython(
-          `request("${url}".replace("http://localhost:3000", ""), "${method}", ${JSON.stringify(
-            eventData
-          )})`
+          `request("${url}".replace("http://localhost:3000", ""), "${method}", form_data="${eventData}")`
         );
 
-        console.log(data);
-      }
+        console.info("handling form", data);
 
-      console.log(event.data);
+        if (data.result) {
+          onResult(data.result);
+        }
+      }
     };
 
     window.addEventListener("message", listener, false);
@@ -189,11 +153,13 @@ const Preview = ({
 
         const formData = new FormData(e.target);
 
+        const queryString = new URLSearchParams(formData).toString()
+
         window.parent.postMessage({
           source: "django-iframe",
           type: "submit",
           method: e.target.method,
-          data: Object.fromEntries(formData.entries()),
+          data: queryString,
           url: e.target.action,
         }, "*");
       })
@@ -224,25 +190,80 @@ const Preview = ({
   );
 };
 
-export const EditorWithPreview = ({}) => {
+export const Inner = () => {
+  const { runPython } = usePyodide();
+
   const [url, setUrl] = useState("http://localhost:3000/");
   const [data, setData] = useState("");
 
-  const handleResult = useCallback((result: string) => {
-    setData(result);
+  const navigate = useCallback(
+    async (url: string) => {
+      const data = await runPython(
+        `request("${url}".replace("http://localhost:3000", ""), "GET")`
+      );
+
+      console.log("data is ", data);
+
+      if (data.result) {
+        handleResult(data.result);
+      }
+    },
+    [runPython]
+  );
+
+  const handleResult = useCallback(async (result: string) => {
+    const response = JSON.parse(result);
+
+    console.log("response is ", response);
+
+    if (response.statusCode === 302) {
+      const destinationUrl =
+        "http://localhost:3000" + response.headers.Location;
+
+      setUrl(destinationUrl);
+
+      await navigate(destinationUrl);
+    } else {
+      setData(response.content);
+    }
   }, []);
+
+  const handleCodeChange = useCallback(
+    async (code: string) => {
+      // TODO: not sure why we need this
+      await runPython(getCode(""));
+
+      await runPython(getCode(code));
+
+      await navigate(url);
+    },
+    [handleResult, runPython, url]
+  );
 
   return (
     <PyodideProvider>
       <div className="grid grid-cols-2 flex-1">
         <div className="overflow-y-scroll border-r">
-          <CodeEditor url={url} onResult={handleResult} />
+          <CodeEditor onChange={handleCodeChange} />
         </div>
 
         <div className="relative flex flex-col">
-          <Preview url={url} onUrlChange={setUrl} data={data} />
+          <Preview
+            url={url}
+            onUrlChange={setUrl}
+            data={data}
+            onResult={handleResult}
+          />
         </div>
       </div>
+    </PyodideProvider>
+  );
+};
+
+export const EditorWithPreview = ({}) => {
+  return (
+    <PyodideProvider>
+      <Inner />
     </PyodideProvider>
   );
 };

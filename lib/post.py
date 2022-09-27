@@ -1,10 +1,14 @@
+import io
+import json
 from typing import Optional
+
+print("defining request")
 
 
 def request(
     url: str,
     method: str = "GET",
-    data: Optional[dict] = None,
+    form_data: Optional[str] = None,
     headers: Optional[dict] = None,
     query_string: Optional[str] = None,
     cookie_string: Optional[str] = None,
@@ -47,7 +51,13 @@ def request(
         # 'wsgi.errors': <_io.TextIOWrapper name='<stderr>' mode='w' encoding='utf-8'>,
         # 'wsgi.file_wrapper': <class 'wsgiref.util.FileWrapper'>
     }
-    env["wsgi.input"] = ""
+
+    if form_data is not None:
+        env["CONTENT_LENGTH"] = str(len(form_data))
+        env["CONTENT_TYPE"] = "application/x-www-form-urlencoded"
+        env["wsgi.input"] = io.BytesIO(form_data.encode("utf-8"))
+    else:
+        env["wsgi.input"] = ""
 
     def start_response(status, headers):
         print(status, headers)
@@ -55,4 +65,8 @@ def request(
     app = get_wsgi_application()
     response = app(env, start_response=start_response)
 
-    return response.content.decode(response.charset)
+    return json.dumps({
+        "content": response.content.decode(response.charset),
+        "statusCode": response.status_code,
+        "headers": dict(response.headers),
+    })
