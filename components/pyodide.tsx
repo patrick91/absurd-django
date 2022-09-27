@@ -9,7 +9,7 @@ const PyodideContext = React.createContext({
 export default class PyodideWorker extends Worker {
   currentId: number;
   callbacks: { [key: number]: (value: any) => void };
-  onload: () => void = () => {};
+  onload: (savedPythonCode?: string) => void = () => {};
 
   constructor() {
     super("/js/pyodide.worker.js");
@@ -18,8 +18,10 @@ export default class PyodideWorker extends Worker {
     this.callbacks = {};
 
     this.onmessage = (event) => {
+      // TODO: We should have event types.
+
       if (event.data.ready) {
-        this.onload();
+        this.onload(event.data.savedPythonCode);
       }
 
       const { id, result, error } = event.data;
@@ -48,12 +50,17 @@ const pyodideWorker = new PyodideWorker();
 
 export const PyodideProvider = ({
   children,
+  setCode,
 }: {
   children: React.ReactNode;
+  setCode: (code: string) => void;
 }) => {
   const [loading, setLoading] = React.useState(true);
 
-  pyodideWorker.onload = () => {
+  pyodideWorker.onload = (savedPythonCode?: string) => {
+    if (savedPythonCode) {
+      setCode(savedPythonCode)
+    }
     setLoading(false);
   };
 
@@ -63,6 +70,12 @@ export const PyodideProvider = ({
     </PyodideContext.Provider>
   );
 };
+
+// Still missing:
+// - currently we save ALL the code, we should save only the user's code...
+// - loading spinner on the left at the beginning (don't show code until pyodide is ready)
+// - replace code on the left with the saved code on load
+// - debounce saving the code, we shouldn't save it as often, it's too slow
 
 export const usePyodide = () => {
   const { loading, error, setLoading } = React.useContext(PyodideContext);
