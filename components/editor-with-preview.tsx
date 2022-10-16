@@ -111,8 +111,7 @@ const Preview = ({
   onUrlChange: (url: string) => void;
   onResult: (result: string) => void;
 }) => {
-  const { loading } = usePyodide();
-  const { runPython } = usePyodide();
+  const { loading, runPython } = usePyodide();
 
   useEffect(() => {
     const listener = async (event: MessageEvent) => {
