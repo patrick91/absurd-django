@@ -190,7 +190,7 @@ const Preview = ({
 };
 
 export const Inner = () => {
-  const { runPython } = usePyodide();
+  const { runPython, initializing, error } = usePyodide();
 
   const [url, setUrl] = useState("http://localhost:3000/");
   const [data, setData] = useState("");
@@ -245,6 +245,12 @@ export const Inner = () => {
         <CodeEditor onChange={handleCodeChange} />
       </div>
 
+      {initializing && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <Loading />
+        </div>
+      )}
+
       <div className="relative flex flex-col">
         <Preview
           url={url}
@@ -253,6 +259,12 @@ export const Inner = () => {
           onResult={handleResult}
         />
       </div>
+
+      {error && (
+        <div className="absolute left-0 bottom-0 right-0 h-1/2 p-2 bg-yellow-100 overflow-scroll">
+          <pre>{error}</pre>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,9 +1,11 @@
 import React from "react";
 
 const PyodideContext = React.createContext({
-  loading: true,
-  error: null,
+  initializing: true,
+  loading: false,
+  error: null as string | null,
   setLoading: (loading: boolean) => {},
+  setError: (error: string | null) => {},
 });
 
 export default class PyodideWorker extends Worker {
@@ -51,21 +53,26 @@ export const PyodideProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
+  const [initializing, setInitializing] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   pyodideWorker.onload = () => {
-    setLoading(false);
+    setInitializing(false);
   };
 
   return (
-    <PyodideContext.Provider value={{ loading, error: null, setLoading }}>
+    <PyodideContext.Provider
+      value={{ initializing, loading, error, setLoading, setError }}
+    >
       {children}
     </PyodideContext.Provider>
   );
 };
 
 export const usePyodide = () => {
-  const { loading, error, setLoading } = React.useContext(PyodideContext);
+  const { loading, error, setError, setLoading, initializing } =
+    React.useContext(PyodideContext);
 
   const runPython = React.useCallback(
     async (code: string) => {
@@ -76,6 +83,8 @@ export const usePyodide = () => {
         error?: string | null;
       }>);
 
+      setError(data.error || null);
+
       setLoading(false);
 
       return data;
@@ -83,5 +92,5 @@ export const usePyodide = () => {
     [pyodideWorker]
   );
 
-  return { loading, error, runPython };
+  return { loading, error, initializing, runPython };
 };
