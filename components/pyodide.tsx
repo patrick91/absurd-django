@@ -76,8 +76,6 @@ export const usePyodide = () => {
         error?: string | null;
       }>);
 
-      console.log(data)
-
       setLoading(false);
 
       return data;

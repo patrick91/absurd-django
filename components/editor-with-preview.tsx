@@ -241,22 +241,20 @@ export const Inner = () => {
   );
 
   return (
-    <PyodideProvider>
-      <div className="grid grid-cols-2 flex-1">
-        <div className="overflow-y-scroll border-r">
-          <CodeEditor onChange={handleCodeChange} />
-        </div>
-
-        <div className="relative flex flex-col">
-          <Preview
-            url={url}
-            onUrlChange={setUrl}
-            data={data}
-            onResult={handleResult}
-          />
-        </div>
+    <div className="grid grid-cols-2 flex-1">
+      <div className="overflow-y-scroll border-r">
+        <CodeEditor onChange={handleCodeChange} />
       </div>
-    </PyodideProvider>
+
+      <div className="relative flex flex-col">
+        <Preview
+          url={url}
+          onUrlChange={setUrl}
+          data={data}
+          onResult={handleResult}
+        />
+      </div>
+    </div>
   );
 };
 
