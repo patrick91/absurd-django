@@ -44,11 +44,13 @@ self.onmessage = async (event) => {
     await self.pyodide.loadPackagesFromImports(python);
 
     const result = pyodide.runPython(python);
+    console.log(result);
 
     self.pyodide.FS.syncfs(false, (err) => {
       self.postMessage({ result, id });
     });
   } catch (error) {
+    console.log(error);
     self.postMessage({ error: error.message, id, result: null });
   }
 };

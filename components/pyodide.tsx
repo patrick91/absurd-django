@@ -83,7 +83,9 @@ export const usePyodide = () => {
         error?: string | null;
       }>);
 
-      setError(data.error || null);
+      if (data.error) {
+        setError(data.error || null);
+      }
 
       setLoading(false);
 

@@ -5,16 +5,12 @@ import { Loading } from "../components/loading";
 import debounce from "lodash.debounce";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
-import { POST_CODE, SETUP_CODE } from "../lib/django";
+import { SETUP_CODE } from "../lib/django";
 
 // @ts-ignore
 import code from "../lib/default_code.py";
 
 const DEFAULT_CODE = code;
-
-const getCode = (code: string) => {
-  return [SETUP_CODE, code, POST_CODE].join("\n");
-};
 
 const CodeEditor = ({ onChange }: { onChange: (code: string) => void }) => {
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -130,8 +126,6 @@ export const Inner = () => {
         `request("${url}".replace("http://localhost:3000", ""), "GET")`
       );
 
-      console.log("data is ", data);
-
       if (data.result) {
         handleResult(data.result);
       }
@@ -141,8 +135,6 @@ export const Inner = () => {
 
   const handleResult = useCallback(async (result: string) => {
     const response = JSON.parse(result);
-
-    console.log("response is ", response);
 
     if (response.statusCode === 302) {
       const destinationUrl =
@@ -158,11 +150,8 @@ export const Inner = () => {
 
   const handleCodeChange = useCallback(
     async (code: string) => {
-      // TODO: not sure why we need this
-      await runPython(getCode(""));
-
-      await runPython(getCode(code));
-
+      await runPython(SETUP_CODE);
+      await runPython(code);
       await navigate(url);
     },
     [handleResult, runPython, url]

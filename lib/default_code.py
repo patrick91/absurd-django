@@ -20,55 +20,51 @@ TEMPLATE = """
 </ul>
 """
 
-import random
-
-from pathlib import Path
-
-
 class Todo(models.Model):
     text = models.TextField()
 
     class Meta:
-        app_label = "abc"
+        app_label = this
 
 
-def _create_db():
-    # TODO: create db automatically from Django models
-    with connection.cursor() as cursor:
-        cursor.execute("""
-          create table if not exists abc_todo (id INTEGER PRIMARY KEY, text STRING);
-        """)
+# def _create_db():
+#     # TODO: create db automatically from Django models
+#     with connection.cursor() as cursor:
+#         cursor.execute("""
+#           create table if not exists abc_todo (id INTEGER PRIMARY KEY, text STRING);
+#         """)
 
-def add_todo(request):
-    _create_db()
+# def add_todo(request):
+#     _create_db()
 
-    # TODO: raise if it is not post
+#     # TODO: raise if it is not post
 
-    text = request.POST["text"]
+#     text = request.POST["text"]
 
-    todo = Todo.objects.create(text=text)
+#     todo = Todo.objects.create(text=text)
 
-    return HttpResponseRedirect("/")
+#     return HttpResponseRedirect("/")
 
-def todos(request):
-    _create_db()
+# def todos(request):
+#     _create_db()
 
-    todos = Todo.objects.all().order_by("-id")
+#     todos = Todo.objects.all().order_by("-id")
 
-    t = Template(TEMPLATE)
-    c = Context({"todos": todos})
-    return HttpResponse(t.render(c))
+#     t = Template(TEMPLATE)
+#     c = Context({"todos": todos})
+#     return HttpResponse(t.render(c))
 
-def clear(request):
-    _create_db()
+# def clear(request):
+#     _create_db()
 
-    Todo.objects.all().delete()
+#     Todo.objects.all().delete()
 
-    return HttpResponse("Cleared all todos")
+#     return HttpResponse("Cleared all todos")
 
+# from django.urls import path
 
-urlpatterns = [
-    path("", todos),
-    path("add-todo", add_todo),
-    path("clear", clear),
-]
+# urlpatterns = [
+#     path("", todos),
+#     path("add-todo", add_todo),
+#     path("clear", clear),
+# ]
