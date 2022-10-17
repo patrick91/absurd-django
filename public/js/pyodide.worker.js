@@ -24,6 +24,32 @@ async function loadPyodideAndPackages() {
     print("installing django")
     await micropip.install('tzdata')
     await micropip.install('django')
+
+    import os
+    import shutil
+    import sys
+
+    os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+
+    os.chdir("/data")
+
+    # if data is empty
+
+    if not os.listdir("/data"):
+        print("creating template")
+        from django.core.management import execute_from_command_line
+
+        execute_from_command_line(["manage.py", "startproject", "absurd", "."])
+
+        # "fix" permissions
+        for root, dirs, files in os.walk("."):
+            for file in files:
+                os.chmod(os.path.join(root, file), 0o777)
+
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'absurd.settings')
+
+    if "data" not in sys.path:
+        sys.path.append("/data")
   `);
 }
 
@@ -44,7 +70,7 @@ self.onmessage = async (event) => {
     await self.pyodide.loadPackagesFromImports(python);
 
     const result = pyodide.runPython(python);
-    console.log(result);
+    // console.log(result);
 
     self.pyodide.FS.syncfs(false, (err) => {
       self.postMessage({ result, id });

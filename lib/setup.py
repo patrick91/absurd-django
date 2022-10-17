@@ -1,66 +1,5 @@
-import os
 
-os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-
-from django.conf import settings
-from django.core.wsgi import get_wsgi_application
-from django.urls.resolvers import _get_cached_resolver
-from django.utils.crypto import get_random_string
-from django.utils.functional import empty
-
-this = "ABC"
-
-_get_cached_resolver.cache_clear()
-
-settings._wrapped = empty
-settings.configure(
-    DEBUG=True,
-    ALLOWED_HOSTS=["*"],  # Disable host header validation
-    ROOT_URLCONF=__name__,  # Make this module the urlconf
-    SECRET_KEY=get_random_string(
-        50
-    ),  # We aren't using any security features but Django requires this setting
-    MIDDLEWARE=["django.middleware.common.CommonMiddleware"],
-    EMAIL_BACKEND="django.core.mail.backends.dummy.EmailBackend",
-    INSTALLED_APPS=["abc"],
-    DATABASES={
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": "/data/data.sqlite3",
-        }
-    },
-    TEMPLATES=[
-        {
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "APP_DIRS": True,
-            "OPTIONS": {
-                # ... some options here ...
-            },
-        },
-    ],
-)
-urlpatterns = []
-browser_url = None
-
-print("setting up")
-
-from django.db import models
-from django.apps import apps
-
-def get_app(app_label,*a, **kw):
-    if app_label==this:
-        return sys.modules[__name__]
-    return apps.get_app_config(app_label,*a,**kw).models_module
-models.get_app = get_app
-apps.app_configs[type(this+'.models',(),{'__file__':"__main__"})] = this
-print("setting up done")
-
-
-import io
-import json
 from typing import Optional
-
 
 def request(
     url: str,
@@ -70,6 +9,9 @@ def request(
     query_string: Optional[str] = None,
     cookie_string: Optional[str] = None,
 ):
+    import json
+    from django.core.wsgi import get_wsgi_application
+
     env = {
         "SERVER_NAME": "1.0.0.127.in-addr.arpa",
         "GATEWAY_INTERFACE": "CGI/1.1",
