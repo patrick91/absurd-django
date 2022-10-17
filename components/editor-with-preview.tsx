@@ -6,9 +6,11 @@ import debounce from "lodash.debounce";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
 import { SETUP_CODE } from "../lib/django";
+import { useLiveQuery } from "dexie-react-hooks";
 
 // @ts-ignore
 import code from "../lib/default_code.py";
+import { db } from "../lib/db";
 
 const DEFAULT_CODE = code;
 
@@ -114,6 +116,28 @@ const Preview = ({
   );
 };
 
+function FileTree() {
+  const filePaths = useLiveQuery(() => db.FILE_DATA.toCollection().keys());
+
+  if (!filePaths) {
+    return null;
+  }
+
+  let paths = filePaths.map((path) => path.toString().replace(/^\/data\//, ""));
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <div className="flex-1 overflow-y-auto">
+        {paths.map((filePath) => (
+          <div key={filePath}>
+            {filePath}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const Inner = () => {
   const { runPython, initializing, error } = usePyodide();
 
@@ -159,6 +183,8 @@ export const Inner = () => {
 
   return (
     <div className="grid grid-cols-2 flex-1">
+      <FileTree />
+
       <div className="overflow-y-scroll border-r">
         <CodeEditor onChange={handleCodeChange} />
       </div>
