@@ -5,12 +5,12 @@ import { Loading } from "../components/loading";
 import debounce from "lodash.debounce";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
-import { useLiveQuery } from "dexie-react-hooks";
 
 // @ts-ignore
 import code from "../lib/default_code.py";
 import { db } from "../lib/db";
 import { SETUP_CODE } from "../lib/django";
+import { FileTree } from "./file-tree";
 
 const DEFAULT_CODE = code;
 
@@ -145,28 +145,6 @@ const Preview = ({
     </div>
   );
 };
-
-function FileTree({ onSelect }: { onSelect: (path: string) => void }) {
-  const filePaths = useLiveQuery(() => db.FILE_DATA.toCollection().keys());
-
-  if (!filePaths) {
-    return null;
-  }
-
-  let paths = filePaths.map((path) => path.toString());
-
-  return (
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 overflow-y-auto">
-        {paths.map((filePath) => (
-          <div key={filePath} onClick={() => onSelect(filePath)}>
-            {filePath.replace(/^\/data\//, "")}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export const Inner = () => {
   const { runPython, initializing, error } = usePyodide();
