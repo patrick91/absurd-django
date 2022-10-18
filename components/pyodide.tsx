@@ -44,6 +44,18 @@ export default class PyodideWorker extends Worker {
       });
     });
   }
+
+  writeFile(path: string, contents: string) {
+    this.currentId = (this.currentId + 1) % Number.MAX_SAFE_INTEGER;
+    return new Promise((onSuccess) => {
+      this.callbacks[this.currentId] = onSuccess;
+      this.postMessage({
+        contents,
+        path,
+        id: this.currentId,
+      });
+    });
+  }
 }
 
 const pyodideWorker = new PyodideWorker();
@@ -74,23 +86,27 @@ export const usePyodide = () => {
   const { loading, error, setError, setLoading, initializing } =
     React.useContext(PyodideContext);
 
-  const runPython = React.useCallback(
-    async (code: string) => {
-      setLoading(true);
+  const runPython = React.useCallback(async (code: string) => {
+    setLoading(true);
 
-      const data = await (pyodideWorker.runPython(code) as Promise<{
-        result?: string | null;
-        error?: string | null;
-      }>);
+    const data = await (pyodideWorker.runPython(code) as Promise<{
+      result?: string | null;
+      error?: string | null;
+    }>);
 
-      setError(data.error || null);
+    setError(data.error || null);
 
-      setLoading(false);
+    setLoading(false);
 
-      return data;
+    return data;
+  }, []);
+
+  const writeFile = React.useCallback(
+    async (file: string, contents: string) => {
+      await pyodideWorker.writeFile(file, contents);
     },
-    [pyodideWorker]
+    []
   );
 
-  return { loading, error, initializing, runPython };
+  return { loading, error, initializing, runPython, writeFile };
 };

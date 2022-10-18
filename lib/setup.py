@@ -1,15 +1,33 @@
 
-from typing import Optional
+from typing import Any, Optional
+import sys
+import io
+
+def _reset():
+    from django.urls.resolvers import _get_cached_resolver
+    _get_cached_resolver.cache_clear()
+
+    for key in list(sys.modules.keys()):
+        if key.startswith(("django.", "polls.", "absurd.")):
+            del sys.modules[key]
+
 
 def request(
     url: str,
     method: str = "GET",
     form_data: Optional[str] = None,
-    headers: Optional[dict] = None,
+    headers: Optional[dict[str, Any]] = None,
     query_string: Optional[str] = None,
     cookie_string: Optional[str] = None,
+    should_reset: bool = True,
 ):
     import json
+
+    print("request", url, method, should_reset)
+
+    if should_reset:
+        _reset()
+
     from django.core.wsgi import get_wsgi_application
 
     env = {
@@ -59,7 +77,7 @@ def request(
         env["wsgi.input"] = ""
 
     def start_response(status, headers):
-        print(status, headers)
+        ...
 
     app = get_wsgi_application()
     response = app(env, start_response=start_response)

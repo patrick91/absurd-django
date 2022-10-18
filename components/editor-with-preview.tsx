@@ -5,26 +5,56 @@ import { Loading } from "../components/loading";
 import debounce from "lodash.debounce";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
-import { SETUP_CODE } from "../lib/django";
 import { useLiveQuery } from "dexie-react-hooks";
 
 // @ts-ignore
 import code from "../lib/default_code.py";
 import { db } from "../lib/db";
+import { SETUP_CODE } from "../lib/django";
 
 const DEFAULT_CODE = code;
 
-const CodeEditor = ({ onChange }: { onChange: (code: string) => void }) => {
+const CodeEditor = ({
+  onChange,
+  currentFile,
+}: {
+  onChange: (code: string) => void;
+  currentFile: string | null;
+}) => {
   const [code, setCode] = useState(DEFAULT_CODE);
 
-  const run = useMemo(() => debounce(onChange, 100), [onChange]);
+  const { writeFile } = usePyodide();
+
+  useEffect(() => {
+    if (currentFile === null) {
+      return;
+    }
+
+    db.FILE_DATA.get(currentFile).then((file) => {
+      if (!file) {
+        return;
+      }
+
+      // const buffer = thisReturnsBuffers();
+
+      const blob = new Blob([file.contents], {
+        type: "text/plain; charset=utf-8",
+      });
+
+      blob.text().then((text) => setCode(text));
+    });
+  }, [currentFile]);
+
+  const run = useMemo(() => debounce(onChange, 200), [onChange]);
 
   const handleOnChange = (code: string) => {
+    writeFile(currentFile, code);
+
     setCode(code);
     run(code);
   };
 
-  return <Editor defaultCode={code} onChange={handleOnChange} />;
+  return <Editor code={code} onChange={handleOnChange} />;
 };
 
 const Preview = ({
@@ -52,7 +82,7 @@ const Preview = ({
         const url = event.data.url;
 
         const data = await runPython(
-          `request("${url}".replace("http://localhost:3000", ""), "${method}", form_data="${eventData}")`
+          `request("${url}".replace("http://localhost:3000", ""), "${method}", form_data="${eventData}", should_reset=False)`
         );
 
         console.info("handling form", data);
@@ -116,21 +146,21 @@ const Preview = ({
   );
 };
 
-function FileTree() {
+function FileTree({ onSelect }: { onSelect: (path: string) => void }) {
   const filePaths = useLiveQuery(() => db.FILE_DATA.toCollection().keys());
 
   if (!filePaths) {
     return null;
   }
 
-  let paths = filePaths.map((path) => path.toString().replace(/^\/data\//, ""));
+  let paths = filePaths.map((path) => path.toString());
 
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex-1 overflow-y-auto">
         {paths.map((filePath) => (
-          <div key={filePath}>
-            {filePath}
+          <div key={filePath} onClick={() => onSelect(filePath)}>
+            {filePath.replace(/^\/data\//, "")}
           </div>
         ))}
       </div>
@@ -144,10 +174,14 @@ export const Inner = () => {
   const [url, setUrl] = useState("http://localhost:3000/");
   const [data, setData] = useState("");
 
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+
   const navigate = useCallback(
-    async (url: string) => {
+    async (url: string, shouldReset: boolean = true) => {
+      let reset = shouldReset ? "True" : "False";
+
       const data = await runPython(
-        `request("${url}".replace("http://localhost:3000", ""), "GET")`
+        `request("${url}".replace("http://localhost:3000", ""), "GET", should_reset=${reset})`
       );
 
       if (data.result) {
@@ -166,7 +200,7 @@ export const Inner = () => {
 
       setUrl(destinationUrl);
 
-      await navigate(destinationUrl);
+      await navigate(destinationUrl, false);
     } else {
       setData(response.content);
     }
@@ -175,18 +209,22 @@ export const Inner = () => {
   const handleCodeChange = useCallback(
     async (code: string) => {
       await runPython(SETUP_CODE);
-      await runPython(code);
+      // await runPython(code);
       await navigate(url);
     },
     [handleResult, runPython, url]
   );
 
+  const handleFileSelection = (path: string) => {
+    setCurrentFile(path);
+  };
+
   return (
-    <div className="grid grid-cols-2 flex-1">
-      <FileTree />
+    <div className="grid flex-1 grid-cols-[150px,1fr,1fr]">
+      <FileTree onSelect={handleFileSelection} />
 
       <div className="overflow-y-scroll border-r">
-        <CodeEditor onChange={handleCodeChange} />
+        <CodeEditor onChange={handleCodeChange} currentFile={currentFile} />
       </div>
 
       {initializing && (

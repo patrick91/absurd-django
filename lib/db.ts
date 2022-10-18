@@ -2,6 +2,7 @@ import Dexie, { Table } from "dexie";
 
 export interface FileData {
   timestamp: string;
+  contents: Uint8Array;
 }
 
 export class MySubClassedDexie extends Dexie {
