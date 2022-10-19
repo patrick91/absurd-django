@@ -17,7 +17,7 @@ const Tree = ({
         const isFolder = !!item.children;
 
         return (
-          <li key={item.id} className="border-t">
+          <li key={item.name} className="border-t">
             <span
               className="block hover:bg-gray-200"
               onClick={() => {

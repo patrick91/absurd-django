@@ -35,8 +35,6 @@ const CodeEditor = ({
         return;
       }
 
-      // const buffer = thisReturnsBuffers();
-
       const blob = new Blob([file.contents], {
         type: "text/plain; charset=utf-8",
       });
@@ -45,16 +43,21 @@ const CodeEditor = ({
     });
   }, [currentFile]);
 
-  const run = useMemo(() => debounce(onChange, 200), [onChange]);
+  const handleCodeChange = useMemo(
+    () =>
+      debounce((code: string) => {
+        if (currentFile) {
+          writeFile(currentFile, code);
+        }
 
-  const handleOnChange = (code: string) => {
-    writeFile(currentFile, code);
+        setCode(code);
 
-    setCode(code);
-    run(code);
-  };
+        onChange(code);
+      }, 200),
+    [onChange, currentFile, writeFile]
+  );
 
-  return <Editor code={code} onChange={handleOnChange} />;
+  return <Editor code={code} onChange={handleCodeChange} />;
 };
 
 const Preview = ({
@@ -181,6 +184,10 @@ export const Inner = () => {
       setData(response.content);
     }
   }, []);
+
+  useEffect(() => {
+    navigate(url, false);
+  }, [url, navigate]);
 
   const handleCodeChange = useCallback(
     async (code: string) => {
