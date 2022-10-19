@@ -85,8 +85,6 @@ const Preview = ({
           `request("${url}".replace("http://localhost:3000", ""), "${method}", form_data="${eventData}", should_reset=False)`
         );
 
-        console.info("handling form", data);
-
         if (data.result) {
           onResult(data.result);
         }
@@ -198,7 +196,7 @@ export const Inner = () => {
   };
 
   return (
-    <div className="grid flex-1 grid-cols-[150px,1fr,1fr]">
+    <div className="grid flex-1 grid-cols-[200px,1fr,1fr] divide-x">
       <FileTree onSelect={handleFileSelection} />
 
       <div className="overflow-y-scroll border-r">

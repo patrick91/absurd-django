@@ -1,5 +1,6 @@
 import { db } from "../lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { clsx } from "clsx";
 
 const Tree = ({
   data,
@@ -11,27 +12,43 @@ const Tree = ({
   onSelect: (path: string) => void;
 }) => {
   return (
-    <ul
-      style={{
-        paddingLeft: (level + 1) * 5,
-      }}
-    >
-      {data.map((item: any) => (
-        <li key={item.id} className="border-t">
-          <span
-            className="block hover:bg-gray-200"
-            onClick={() => {
-              console.log(item.name);
-              onSelect(item.name);
-            }}
-          >
-            {item.shortName}
-          </span>
-          {item.children && (
-            <Tree data={item.children} level={level + 1} onSelect={onSelect} />
-          )}
-        </li>
-      ))}
+    <ul>
+      {data.map((item: any) => {
+        const isFolder = !!item.children;
+
+        return (
+          <li key={item.id} className="border-t">
+            <span
+              className="block hover:bg-gray-200"
+              onClick={() => {
+                if (isFolder) {
+                  return;
+                }
+
+                onSelect(item.name);
+              }}
+            >
+              <span
+                className={clsx("block", {
+                  "font-bold": isFolder,
+                })}
+                style={{
+                  paddingLeft: (level + 1) * 5,
+                }}
+              >
+                {item.shortName}
+              </span>
+            </span>
+            {item.children && (
+              <Tree
+                data={item.children}
+                level={level + 1}
+                onSelect={onSelect}
+              />
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 };

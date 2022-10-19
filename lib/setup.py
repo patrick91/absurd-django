@@ -23,7 +23,7 @@ def request(
 ):
     import json
 
-    print("request", url, method, should_reset)
+    # print("request", url, method, should_reset)
 
     if should_reset:
         _reset()
