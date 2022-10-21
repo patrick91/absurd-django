@@ -3,16 +3,16 @@ import { useEffect } from "react";
 
 export const Editor = ({
   onChange,
-  defaultCode,
+  code,
 }: {
-  defaultCode: string;
+  code: string;
   onChange?: (code: string) => void;
 }) => {
   const monaco = useMonaco();
 
   useEffect(() => {
     if (monaco) {
-      console.log("here is the monaco instance:", monaco);
+      // console.log("here is the monaco instance:", monaco);
     }
   }, [monaco]);
 
@@ -21,7 +21,7 @@ export const Editor = ({
       onChange={(value) => {
         onChange?.(value || "");
       }}
-      defaultValue={defaultCode}
+      value={code}
       defaultLanguage="python"
     />
   );

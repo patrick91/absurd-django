@@ -3,136 +3,95 @@ import { Loading } from "../components/loading";
 
 // @ts-ignore
 import debounce from "lodash.debounce";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { PyodideProvider, usePyodide } from "./pyodide";
-import { POST_CODE, SETUP_CODE } from "../lib/django";
 
-const DEFAULT_CODE = `
-from django.db import models
-from django.db import connection
-from django.template import Template, Context
-from django.http import HttpResponse
+// @ts-ignore
+import code from "../lib/default_code.py";
+import { db } from "../lib/db";
+import { SETUP_CODE } from "../lib/django";
+import { FileTree } from "./file-tree";
 
-TEMPLATE = """
-<h1>My Todos</h1>
-
-<ul>
-   {% for todo in todos %}
-   <li>{{ todo.text }}</li>
-   {% endfor %}
-</ul>
-"""
-
-import random
-
-from pathlib import Path
-
-def _create_db():
-    # TODO: create db automatically from Django models
-    with connection.cursor() as cursor:
-        cursor.execute("""
-          create table if not exists abc_todo (id INTEGER PRIMARY KEY, text STRING);
-        """)
-
-
-class Todo(models.Model):
-    text = models.TextField()
-
-    class Meta:
-        app_label = "abc"
-
-def index(request):
-    _create_db()
-
-    todo = Todo.objects.create(text=f"text {random.randint(0, 100)}")
-
-    return JsonResponse(
-        {"id": todo.id, "text": todo.text}
-    )
-
-    return JsonResponse({"id": todo.id, "text": todo.text})
-
-def todos(request):
-    _create_db()
-
-    todos = Todo.objects.all()
-
-    t = Template(TEMPLATE)
-    c = Context({"todos": todos})
-    return HttpResponse(t.render(c))
-
-def clear(request):
-    _create_db()
-
-    Todo.objects.all().delete()
-
-    return HttpResponse("Cleared all todos")
-
-
-urlpatterns = [
-    path("", index),
-    path("todos", todos),
-    path("clear", clear),
-]
-`.trim();
-
-const getCode = (code: string, url: string) => {
-  const urlCode = `\nbrowser_url = "${url}".replace("http://localhost:3000", "")\n`;
-
-  return SETUP_CODE + code + urlCode + POST_CODE;
-};
+const DEFAULT_CODE = code;
 
 const CodeEditor = ({
-  url,
-  onResult,
+  onChange,
+  currentFile,
 }: {
-  url: string;
-  onResult: (result: string) => void;
+  onChange: (code: string) => void;
+  currentFile: string | null;
 }) => {
-  const { runPython } = usePyodide();
   const [code, setCode] = useState(DEFAULT_CODE);
 
-  const run = useMemo(
-    () =>
-      debounce(async (code: string) => {
-        await runPython(getCode("", url));
-        const data = await runPython(getCode(code, url));
-
-        if (data.result) {
-          onResult(data.result);
-        }
-      }, 100),
-    [runPython, url]
-  );
-
-  const onChange = (code: string) => {
-    console.log("second");
-    setCode(code);
-  };
+  const { writeFile } = usePyodide();
 
   useEffect(() => {
-    runPython(SETUP_CODE).then(() => {
-      run(code);
-    });
-  }, [code, url]);
+    if (currentFile === null) {
+      return;
+    }
 
-  return <Editor defaultCode={code} onChange={onChange} />;
+    db.FILE_DATA.get(currentFile).then((file) => {
+      if (!file) {
+        return;
+      }
+
+      const blob = new Blob([file.contents], {
+        type: "text/plain; charset=utf-8",
+      });
+
+      blob.text().then((text) => setCode(text));
+    });
+  }, [currentFile]);
+
+  const handleCodeChange = useMemo(
+    () =>
+      debounce((code: string) => {
+        if (currentFile) {
+          writeFile(currentFile, code);
+        }
+
+        setCode(code);
+
+        onChange(code);
+      }, 200),
+    [onChange, currentFile, writeFile]
+  );
+
+  return <Editor code={code} onChange={handleCodeChange} />;
 };
 
 const Preview = ({
   data,
   url,
   onUrlChange,
+  onResult,
 }: {
   data: string;
   url: string;
   onUrlChange: (url: string) => void;
+  onResult: (result: string) => void;
 }) => {
-  const { loading } = usePyodide();
+  const { loading, runPython } = usePyodide();
 
   useEffect(() => {
-    const listener = (event: MessageEvent) => {
-      console.log(event.data);
+    const listener = async (event: MessageEvent) => {
+      if (event.data.source !== "django-iframe") {
+        return;
+      }
+
+      if (event.data.type === "submit") {
+        const method = event.data.method;
+        const eventData = event.data.data;
+        const url = event.data.url;
+
+        const data = await runPython(
+          `request("${url}".replace("http://localhost:3000", ""), "${method}", form_data="${eventData}", should_reset=False)`
+        );
+
+        if (data.result) {
+          onResult(data.result);
+        }
+      }
     };
 
     window.addEventListener("message", listener, false);
@@ -151,10 +110,14 @@ const Preview = ({
 
         const formData = new FormData(e.target);
 
+        const queryString = new URLSearchParams(formData).toString()
+
         window.parent.postMessage({
+          source: "django-iframe",
           type: "submit",
           method: e.target.method,
-          data: Object.fromEntries(formData.entries())
+          data: queryString,
+          url: e.target.action,
         }, "*");
       })
       </script>
@@ -184,21 +147,97 @@ const Preview = ({
   );
 };
 
-export const EditorWithPreview = ({}) => {
-  const [url, setUrl] = useState("http://localhost:3000/todos");
+export const Inner = () => {
+  const { runPython, initializing, error } = usePyodide();
+
+  const [url, setUrl] = useState("http://localhost:3000/");
   const [data, setData] = useState("");
 
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+
+  const navigate = useCallback(
+    async (url: string, shouldReset: boolean = true) => {
+      let reset = shouldReset ? "True" : "False";
+
+      const data = await runPython(
+        `request("${url}".replace("http://localhost:3000", ""), "GET", should_reset=${reset})`
+      );
+
+      if (data.result) {
+        handleResult(data.result);
+      }
+    },
+    [runPython]
+  );
+
+  const handleResult = useCallback(async (result: string) => {
+    const response = JSON.parse(result);
+
+    if (response.statusCode === 302) {
+      const destinationUrl =
+        "http://localhost:3000" + response.headers.Location;
+
+      setUrl(destinationUrl);
+
+      await navigate(destinationUrl, false);
+    } else {
+      setData(response.content);
+    }
+  }, []);
+
+  useEffect(() => {
+    navigate(url, false);
+  }, [url, navigate]);
+
+  const handleCodeChange = useCallback(
+    async (code: string) => {
+      await runPython(SETUP_CODE);
+      // await runPython(code);
+      await navigate(url);
+    },
+    [handleResult, runPython, url]
+  );
+
+  const handleFileSelection = (path: string) => {
+    setCurrentFile(path);
+  };
+
+  return (
+    <div className="grid flex-1 grid-cols-[200px,1fr,1fr] divide-x">
+      <FileTree onSelect={handleFileSelection} />
+
+      <div className="overflow-y-scroll border-r">
+        <CodeEditor onChange={handleCodeChange} currentFile={currentFile} />
+      </div>
+
+      {initializing && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <Loading />
+        </div>
+      )}
+
+      <div className="relative flex flex-col">
+        <Preview
+          url={url}
+          onUrlChange={setUrl}
+          data={data}
+          onResult={handleResult}
+        />
+      </div>
+
+      {error && (
+        <div className="absolute left-0 bottom-0 right-0 h-1/2 p-2 bg-yellow-100 overflow-scroll">
+          <pre>{error}</pre>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const EditorWithPreview = ({}) => {
   return (
     <PyodideProvider>
-      <div className="grid grid-cols-2 flex-1">
-        <div className="overflow-y-scroll border-r">
-          <CodeEditor url={url} onResult={(data) => setData(data)} />
-        </div>
-
-        <div className="relative flex flex-col">
-          <Preview url={url} onUrlChange={setUrl} data={data} />
-        </div>
-      </div>
+      <Inner />
     </PyodideProvider>
   );
 };

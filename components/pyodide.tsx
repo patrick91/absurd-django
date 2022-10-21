@@ -1,9 +1,11 @@
 import React from "react";
 
 const PyodideContext = React.createContext({
-  loading: true,
-  error: null,
+  initializing: true,
+  loading: false,
+  error: null as string | null,
   setLoading: (loading: boolean) => {},
+  setError: (error: string | null) => {},
 });
 
 export default class PyodideWorker extends Worker {
@@ -42,6 +44,18 @@ export default class PyodideWorker extends Worker {
       });
     });
   }
+
+  writeFile(path: string, contents: string) {
+    this.currentId = (this.currentId + 1) % Number.MAX_SAFE_INTEGER;
+    return new Promise((onSuccess) => {
+      this.callbacks[this.currentId] = onSuccess;
+      this.postMessage({
+        contents,
+        path,
+        id: this.currentId,
+      });
+    });
+  }
 }
 
 const pyodideWorker = new PyodideWorker();
@@ -51,37 +65,48 @@ export const PyodideProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
+  const [initializing, setInitializing] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   pyodideWorker.onload = () => {
-    setLoading(false);
+    setInitializing(false);
   };
 
   return (
-    <PyodideContext.Provider value={{ loading, error: null, setLoading }}>
+    <PyodideContext.Provider
+      value={{ initializing, loading, error, setLoading, setError }}
+    >
       {children}
     </PyodideContext.Provider>
   );
 };
 
 export const usePyodide = () => {
-  const { loading, error, setLoading } = React.useContext(PyodideContext);
+  const { loading, error, setError, setLoading, initializing } =
+    React.useContext(PyodideContext);
 
-  const runPython = React.useCallback(
-    async (code: string) => {
-      setLoading(true);
+  const runPython = React.useCallback(async (code: string) => {
+    setLoading(true);
 
-      const data = await (pyodideWorker.runPython(code) as Promise<{
-        result: string | null;
-        error: string | null;
-      }>);
+    const data = await (pyodideWorker.runPython(code) as Promise<{
+      result?: string | null;
+      error?: string | null;
+    }>);
 
-      setLoading(false);
+    setError(data.error || null);
 
-      return data;
+    setLoading(false);
+
+    return data;
+  }, []);
+
+  const writeFile = React.useCallback(
+    async (file: string, contents: string) => {
+      await pyodideWorker.writeFile(file, contents);
     },
-    [pyodideWorker]
+    []
   );
 
-  return { loading, error, runPython };
+  return { loading, error, initializing, runPython, writeFile };
 };
